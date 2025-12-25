@@ -2,11 +2,11 @@
 header('Access-Control-Allow-Origin: *'); 
 header('Content-Type: application/json');
 
-// Tus credenciales de InfinityFree
-$servidor = "sql213.infinityfree.com";
-$usuario  = "if0_40752715";
-$password = "blrrZk6SiSfPs";
-$db       = "if0_40752715_sistemavicregistro";
+// Clever Cloud inyecta estas variables automáticamente si vinculas el Add-on
+$servidor = getenv("MYSQL_ADDON_HOST");
+$usuario  = getenv("MYSQL_ADDON_USER");
+$password = getenv("MYSQL_ADDON_PASSWORD");
+$db       = getenv("MYSQL_ADDON_DB");
 
 $conn = new mysqli($servidor, $usuario, $password, $db);
 
@@ -23,4 +23,4 @@ while($row = $result->fetch_assoc()) {
 
 echo json_encode($data);
 $conn->close();
-?>
+?>     
