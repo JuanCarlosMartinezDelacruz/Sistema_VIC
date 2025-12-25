@@ -1,5 +1,5 @@
 // REEMPLAZA "tu-dominio.infinityfreeapp.com" por la URL real de tu cuenta
-const API_URL = "https://sistemavic.free.nf/api.php";
+const API_URL = "https://app-269feec6-c9e5-4839-83e5-f691fc8e8ac6.cleverapps.io/api.php";
 
 async function fetchMenuData() {
     try {
@@ -18,4 +18,5 @@ async function fetchMenuData() {
         return [];
     }
 }
+
 window.fetchMenuData = fetchMenuData;
