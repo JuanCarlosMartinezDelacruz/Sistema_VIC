@@ -1,8 +1,8 @@
 <?php
-$servidor = "sql213.infinityfree.com";
-$usuario  = "if0_40752715";
-$password = "blrrZk6SiSfPs";
-$db       = "if0_40752715_sistemavicregistro";
+$servidor = getenv("MYSQL_ADDON_HOST");
+$usuario  = getenv("MYSQL_ADDON_USER");
+$password = getenv("MYSQL_ADDON_PASSWORD");
+$db       = getenv("MYSQL_ADDON_DB");
 
 $conn = new mysqli($servidor, $usuario, $password, $db);
 
