@@ -1,0 +1,252 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sistema VIC - Control Energético</title>
+  <link rel="icon" type="image/png" href="./assets/icon.png">
+  <link rel="stylesheet" href="styles.css">
+  
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+</head>
+<body>
+  <div class="app-container">
+    <div class="sidebar">
+      <div class="logo">
+        <h1>⚡ Sistema VIC</h1>
+      </div>
+      <ul class="nav-menu">
+        <li class="nav-item">
+          <a href="#" class="nav-link active" data-page="dashboard">
+            <i>📊</i> Dashboard
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href="#" class="nav-link" data-page="reports">
+            <i>📈</i> Reportes
+          </a>
+        </li>
+        <li class="nav-item">
+          <a href="#" class="nav-link" data-page="settings">
+            <i>⚙️</i> Configuración
+          </a>
+        </li>
+      </ul>
+    </div>
+
+    <div class="main-content">
+      <div id="dashboard-page" class="page active">
+        <div class="dashboard-header">
+          <h2 class="page-title">Panel de Control</h2>
+          <div class="controls">
+            <button class="btn btn-outline" id="refresh-btn">
+              <i>🔄</i> Actualizar
+            </button>
+            <button class="btn btn-primary" id="export-btn">
+              <i>📥</i> Exportar Datos
+            </button>
+          </div>
+        </div>
+
+        <div class="stats-container">
+  <div class="stat-card">
+    <div class="stat-icon" style="background: rgba(1, 195, 168, 0.2);">
+      <i>⚡</i>
+    </div>
+    <div class="stat-info">
+      <h3>Consumo Actual</h3>
+      <div class="stat-value" id="current-power">-- W</div>
+      <div class="stat-change" id="power-change">
+        <i>⏱️</i> Tiempo Real
+      </div>
+    </div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-icon" style="background: rgba(24, 144, 255, 0.2);">
+      <i>🔋</i>
+    </div>
+    <div class="stat-info">
+      <h3>Energía (Selección)</h3>
+      <div class="stat-value" id="total-energy">-- kWh</div>
+      <div class="stat-change" id="energy-change">
+        <i>📊</i> Acumulado
+      </div>
+    </div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-icon" style="background: rgba(255, 183, 65, 0.2);">
+      <i>💰</i>
+    </div>
+    <div class="stat-info">
+      <h3>Costo Estimado</h3>
+      <div class="stat-value" id="estimated-cost">-- $</div>
+      
+      <div class="prediction-box">
+        <span class="pred-label">Predicción Próx. Semana:</span>
+        <span class="pred-value" id="cost-prediction">Calculando...</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="stat-card">
+    <div class="stat-icon" style="background: rgba(138, 43, 226, 0.2);"> <i>☁️</i>
+    </div>
+    <div class="stat-info">
+      <h3>Huella de CO₂</h3>
+      <div class="stat-value" id="total-co2">-- kg</div>
+      <div class="stat-change">
+        <small>Factor: 0.45 kg/kWh</small>
+      </div>
+      <a href="https://www.footprintcalculator.org/es/quiz/0/food/category" target="_blank" class="btn-xs-link">
+        👣 Calcula tu huella
+      </a>
+    </div>
+  </div>
+</div>
+
+        <div class="filter-section">
+          <div class="filter-group">
+            <label class="filter-label">Sensor</label>
+            <select class="filter-select" id="sensor-filter">
+              <option value="all">Todos los sensores</option>
+              <option value="SCT013">SCT013</option>
+            </select>
+          </div>
+          <div class="filter-group">
+            <label class="filter-label">Rango de Tiempo</label>
+            <select class="filter-select" id="time-range">
+              <option value="today">Hoy</option>
+              <option value="yesterday">Ayer</option>
+              <option value="week">Esta Semana</option>
+              <option value="month">Este Mes</option>
+              <option value="custom">Personalizado</option>
+            </select>
+          </div>
+          
+          <div class="filter-group" id="custom-date-container" style="display: none; gap: 10px;">
+             <div>
+                <label class="filter-label">Desde</label>
+                <input type="date" class="filter-input" id="date-from">
+             </div>
+             <div>
+                <label class="filter-label">Hasta</label>
+                <input type="date" class="filter-input" id="date-to">
+             </div>
+          </div>
+
+          <button class="btn btn-secondary" id="apply-filters">
+            <i>🔍</i> Aplicar Filtros
+          </button>
+        </div>
+
+        <div class="charts-container">
+          <div class="chart-card">
+            <div class="chart-header">
+              <h3 class="chart-title">Consumo de Energía en Tiempo Real</h3>
+            </div>
+            <div class="chart-container">
+              <canvas id="power-chart"></canvas>
+            </div>
+          </div>
+          <div class="chart-card">
+            <div class="chart-header">
+              <h3 class="chart-title">Distribución por Sensor</h3>
+            </div>
+            <div class="chart-container">
+              <canvas id="sensor-chart"></canvas>
+            </div>
+          </div>
+        </div>
+
+        <div class="data-section">
+          <div class="section-header">
+            <h3 class="section-title">Lecturas Recientes</h3>
+            <button class="btn btn-outline" id="toggle-view">
+              <i>🔄</i> Cambiar Vista
+            </button>
+          </div>
+          <div class="cards-container" id="energy-data-container">
+            </div>
+        </div>
+      </div>
+
+      <div id="reports-page" class="page">
+        <div class="dashboard-header">
+          <h2 class="page-title">Generador de Reportes</h2>
+        </div>
+
+        <div class="reports-section">
+          <h3>Tipos de Reportes (PDF)</h3>
+          <div class="reports-grid">
+            <div class="report-card" data-report="today">
+              <div class="report-icon">📅</div>
+              <h4 class="report-title">Reporte Diario</h4>
+              <p class="report-desc">Resumen detallado de hoy</p>
+            </div>
+            <div class="report-card" data-report="week">
+              <div class="report-icon">📆</div>
+              <h4 class="report-title">Reporte Semanal</h4>
+              <p class="report-desc">Análisis de los últimos 7 días</p>
+            </div>
+            <div class="report-card" data-report="month">
+              <div class="report-icon">📊</div>
+              <h4 class="report-title">Reporte Mensual</h4>
+              <p class="report-desc">Tendencias del mes actual</p>
+            </div>
+            <div class="report-card" data-report="all">
+              <div class="report-icon">📚</div>
+              <h4 class="report-title">Reporte Histórico</h4>
+              <p class="report-desc">Todos los datos registrados</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="settings-page" class="page">
+        <div class="dashboard-header">
+          <h2 class="page-title">Configuración del Sistema</h2>
+        </div>
+
+        <div class="chart-card" style="padding: 20px;">
+          <h3>Parámetros de Costo</h3>
+          <div style="margin-top: 15px;">
+            <label style="color: #aaa;">Tarifa Eléctrica (MXN/kWh):</label>
+            <br>
+            <input type="number" id="electricity-rate" value="0.595" step="0.001" style="margin-top: 5px; padding: 10px; border-radius: 8px; border: 1px solid #444; background: rgba(0,0,0,0.2); color: white;">
+            <button class="btn btn-primary" id="save-settings" style="margin-top: 15px;">
+              <i>💾</i> Guardar Tarifa
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="export-modal" class="modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 class="modal-title">Exportar Datos Visualizados</h3>
+        <button class="close-modal">&times;</button>
+      </div>
+      <div class="modal-body">
+        <p>Selecciona el formato para descargar los datos que estás viendo actualmente (según tus filtros):</p>
+        <div style="display: flex; gap: 15px; margin-top: 20px; justify-content: center;">
+            <button class="btn btn-secondary" id="download-pdf-modal">
+                <i>📄</i> PDF (Reporte)
+            </button>
+            <button class="btn btn-primary" id="download-excel-modal">
+                <i>📗</i> Excel (.xlsx)
+            </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="data.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
