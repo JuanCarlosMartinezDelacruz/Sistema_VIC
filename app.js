@@ -10,68 +10,9 @@ let sensorChart = null;
 // Sistema de colores dinámicos por sensor
 const sensorColorMap = new Map();
 const availableColors = [
-    { 
-        bg: 'radial-gradient(ellipse at right top, #1354b4ed 0%, #8063c7 100%)', 
-        borderStart: '#01c3a8',
-        borderMid: '#bceff3',
-        chart: '#01c3a8' 
-    },
-    { 
-        bg: 'radial-gradient(ellipse at right top, #00458f8f 0%, #3d1eb9 45%, #151419 100%)', 
-        borderStart: '#1890ff',
-        borderMid: '#5aa9ff',
-        chart: '#1890ff' 
-    },
-    { 
-        bg: 'radial-gradient(ellipse at right top, #1297c094 0%, #230972 100%)', 
-        borderStart: '#ffb741',
-        borderMid: '#ffd699',
-        chart: '#ffb741' 
-    },
-    { 
-        bg: 'radial-gradient(ellipse at right top, #322aa682 0%, #025164 100%)', 
-        borderStart: '#ff6b6b',
-        borderMid: '#ffb3b3',
-        chart: '#ff6b6b' 
-    },
-    { 
-        bg: 'radial-gradient(ellipse at right top, #4a148c 0%, #7b1fa2 100%)', 
-        borderStart: '#9c27b0',
-        borderMid: '#ce93d8',
-        chart: '#8a2be2' 
-    },
-    { 
-        bg: 'radial-gradient(ellipse at right top, #006064 0%, #00838f 100%)', 
-        borderStart: '#00bcd4',
-        borderMid: '#80deea',
-        chart: '#00bcd4' 
-    },
-    { 
-        bg: 'radial-gradient(ellipse at right top, #880e4f 0%, #c2185b 100%)', 
-        borderStart: '#e91e63',
-        borderMid: '#f8bbd0',
-        chart: '#e91e63' 
-    },
-    { 
-        bg: 'radial-gradient(ellipse at right top, #33691e 0%, #689f38 100%)', 
-        borderStart: '#8bc34a',
-        borderMid: '#dcedc8',
-        chart: '#8bc34a' 
-    },
-    { 
-        bg: 'radial-gradient(ellipse at right top, #ff6f00 0%, #ffa726 100%)', 
-        borderStart: '#ffc107',
-        borderMid: '#ffecb3',
-        chart: '#ffc107' 
-    },
-    { 
-        bg: 'radial-gradient(ellipse at right top, #1a237e 0%, #3949ab 100%)', 
-        borderStart: '#3f51b5',
-        borderMid: '#c5cae9',
-        chart: '#3f51b5' 
-    }
+    '#01c3a8', '#1890ff', '#ffb741', '#ff6b6b', '#8a2be2', 
+    '#00bcd4', '#e91e63', '#8bc34a', '#ffc107', '#3f51b5'
 ];
-
 let colorIndex = 0;
 
 function getSensorColor(sensorName) {
@@ -79,6 +20,7 @@ function getSensorColor(sensorName) {
         const color = availableColors[colorIndex % availableColors.length];
         sensorColorMap.set(sensorName, color);
         colorIndex++;
+        console.log(`🎨 Asignando color ${color} a sensor ${sensorName}`);
     }
     return sensorColorMap.get(sensorName);
 }
@@ -127,6 +69,10 @@ async function loadEnergyData() {
         }).filter(item => item.dateObj !== null);
 
         allDataGlobal.sort((a, b) => a.dateObj - b.dateObj);
+        
+        console.log(`✅ Cargados ${allDataGlobal.length} registros`);
+        console.log(`📊 Sensores detectados:`, [...new Set(allDataGlobal.map(d => d.sensor))]);
+        
         applyFilters();
     } catch (e) {
         console.error("Error cargando datos:", e);
@@ -175,6 +121,7 @@ function applyFilters() {
         return true;
     });
 
+    console.log(`🔍 Filtrados: ${filteredDataGlobal.length} registros`);
     updateSensorFilter();
     updateUI();
 }
@@ -305,95 +252,57 @@ function renderCards(data) {
 
     const show = data.slice(0, 50);
     if (show.length === 0) {
-        container.innerHTML = '<p style="padding:20px;">No hay datos.</p>';
+        container.innerHTML = '<p style="padding:20px;color:white;">No hay datos.</p>';
         return;
     }
 
     show.forEach((item) => {
-        const colorData = getSensorColor(item.sensor);
+        const color = getSensorColor(item.sensor);
+        
         const card = document.createElement('div');
         card.className = 'card';
+        card.style.background = `linear-gradient(135deg, ${color}40 0%, ${color}10 100%)`;
+        card.style.border = `2px solid ${color}`;
         
-        // Aplicar estilos directamente sin usar clases CSS
-        card.style.cssText = `
-            background: ${colorData.bg};
-            color: white;
-            position: relative;
-            width: 100%;
-            height: 220px;
-            display: flex;
-            flex-direction: column;
-            box-shadow: 0.063em 0.75em 1.563em rgba(7, 143, 197, 0.78);
-            border-radius: 2.25rem;
-            overflow: hidden;
-            padding: 0;
-        `;
-        
-        // Crear el borde animado con ::before usando un div interno
-        const borderDiv = document.createElement('div');
-        borderDiv.style.cssText = `
-            position: absolute;
-            content: "";
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            border-radius: 2.25rem;
-            z-index: -1;
-            border: 0.155rem solid transparent;
-            background: linear-gradient(45deg, ${colorData.borderStart}, ${colorData.borderMid}, #ffffff, ${colorData.borderMid}, ${colorData.borderStart}) border-box;
-            -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
-            -webkit-mask-composite: destination-out;
-            mask-composite: exclude;
-            pointer-events: none;
-        `;
-        card.appendChild(borderDiv);
-        
-        card.innerHTML += `
+        card.innerHTML = `
             <div class="card-header">
                 <div class="date">${item.timestamp}</div>
             </div>
             <div class="card-body">
-                <h2>${item.sensor}</h2>
+                <h2 style="color: ${color};">${item.sensor}</h2>
                 <div class="card-values">
                     <div class="value-container">
                         <div class="value-label">Voltaje</div>
-                        <div class="value">${item.valV}V</div>
+                        <div class="value">${item.valV.toFixed(2)}V</div>
                     </div>
                     <div class="value-container">
                         <div class="value-label">Corriente</div>
-                        <div class="value">${item.valI}A</div>
+                        <div class="value">${item.valI.toFixed(2)}A</div>
                     </div>
                     <div class="value-container">
                         <div class="value-label">Potencia</div>
-                        <div class="value">${item.valP}W</div>
+                        <div class="value" style="color: ${color};">${item.valP.toFixed(2)}W</div>
                     </div>
                 </div>
             </div>
         `;
         container.appendChild(card);
     });
+    
+    console.log(`🎨 Renderizadas ${show.length} tarjetas con colores por sensor`);
 }
 
 function initializeCharts() {
     const ctx1 = document.getElementById('power-chart').getContext('2d');
     powerChart = new Chart(ctx1, {
         type: 'line',
-        data: {
-            datasets: []
-        },
+        data: { datasets: [] },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            interaction: {
-                mode: 'index',
-                intersect: false
-            },
+            interaction: { mode: 'index', intersect: false },
             plugins: { 
-                legend: { 
-                    display: true,
-                    labels: { color: '#fff' }
-                } 
+                legend: { display: true, labels: { color: '#fff' } } 
             },
             scales: {
                 x: { 
@@ -404,11 +313,7 @@ function initializeCharts() {
                 y: { 
                     ticks: { color: '#aaa' }, 
                     grid: { color: 'rgba(255,255,255,0.1)' },
-                    title: {
-                        display: true,
-                        text: 'Potencia (W)',
-                        color: '#aaa'
-                    }
+                    title: { display: true, text: 'Potencia (W)', color: '#aaa' }
                 }
             }
         }
@@ -432,13 +337,7 @@ function initializeCharts() {
             plugins: {
                 legend: { 
                     position: 'bottom', 
-                    labels: { 
-                        color: '#fff',
-                        padding: 15,
-                        font: {
-                            size: 12
-                        }
-                    } 
+                    labels: { color: '#fff', padding: 15, font: { size: 12 } } 
                 },
                 tooltip: {
                     callbacks: {
@@ -459,6 +358,8 @@ function initializeCharts() {
 function updateCharts() {
     if (!powerChart || filteredDataGlobal.length === 0) return;
     
+    console.log("📊 Actualizando gráficas...");
+    
     // Agrupar datos por sensor
     const sensorGroups = {};
     filteredDataGlobal.forEach(d => {
@@ -468,26 +369,18 @@ function updateCharts() {
         sensorGroups[d.sensor].push(d);
     });
 
-    // Crear etiquetas de tiempo únicas para el eje X
-    const allTimes = new Set();
-    filteredDataGlobal.forEach(d => {
-        const timeLabel = `${d.dateObj.getHours().toString().padStart(2,'0')}:${d.dateObj.getMinutes().toString().padStart(2,'0')}`;
-        allTimes.add(timeLabel);
-    });
-    const timeLabels = Array.from(allTimes).sort();
+    console.log("📊 Grupos de sensores:", Object.keys(sensorGroups));
 
-    // Actualizar gráfica de líneas (multi-sensor)
+    // Actualizar gráfica de líneas
     const datasets = Object.keys(sensorGroups).map(sensor => {
-        const colorData = getSensorColor(sensor);
+        const color = getSensorColor(sensor);
         let data = sensorGroups[sensor];
         
-        // Muestreo si hay muchos datos
         if (data.length > 200) {
             const step = Math.ceil(data.length / 200);
             data = data.filter((_, i) => i % step === 0);
         }
 
-        // Crear puntos de datos
         const points = data.map(d => ({
             x: `${d.dateObj.getHours().toString().padStart(2,'0')}:${d.dateObj.getMinutes().toString().padStart(2,'0')}`,
             y: d.valP
@@ -496,8 +389,8 @@ function updateCharts() {
         return {
             label: sensor,
             data: points,
-            borderColor: colorData.chart,
-            backgroundColor: colorData.chart + '30',
+            borderColor: color,
+            backgroundColor: color + '30',
             borderWidth: 2,
             fill: true,
             tension: 0.4,
@@ -507,23 +400,29 @@ function updateCharts() {
     });
 
     powerChart.data.datasets = datasets;
-    powerChart.update('none'); // Sin animación para mejor rendimiento
+    powerChart.update('none');
 
-    // Actualizar gráfica de dona (distribución por sensor)
+    // Actualizar gráfica de dona - SUMA TOTAL POR SENSOR
     const sensorTotals = {};
     filteredDataGlobal.forEach(d => {
-        if (!sensorTotals[d.sensor]) sensorTotals[d.sensor] = 0;
+        if (!sensorTotals[d.sensor]) {
+            sensorTotals[d.sensor] = 0;
+        }
         sensorTotals[d.sensor] += d.valP;
     });
 
+    console.log("🍩 Totales por sensor:", sensorTotals);
+
     const sensorLabels = Object.keys(sensorTotals);
     const sensorValues = Object.values(sensorTotals);
-    const sensorColors = sensorLabels.map(s => getSensorColor(s).chart);
+    const sensorColors = sensorLabels.map(s => getSensorColor(s));
 
     sensorChart.data.labels = sensorLabels;
     sensorChart.data.datasets[0].data = sensorValues;
     sensorChart.data.datasets[0].backgroundColor = sensorColors;
     sensorChart.update('none');
+    
+    console.log("✅ Gráficas actualizadas");
 }
 
 function generatePDF(typeOrData, customTitle) {
@@ -648,9 +547,9 @@ function generatePDF(typeOrData, customTitle) {
 
         doc.text(row.timestamp, 18, y);
         doc.text(row.sensor, 70, y);
-        doc.text(row.valV.toString(), 100, y);
-        doc.text(row.valI.toString(), 130, y);
-        doc.text(row.valP.toString(), 165, y);
+        doc.text(row.valV.toFixed(2), 100, y);
+        doc.text(row.valI.toFixed(2), 130, y);
+        doc.text(row.valP.toFixed(2), 165, y);
         y += 6;
     });
 
@@ -753,7 +652,6 @@ function setupNavigation() {
             pages.forEach(p => p.classList.remove('active'));
             link.classList.add('active');
             document.getElementById(link.getAttribute('data-page') + '-page').classList.add('active');
-
         });
     });
 }
