@@ -307,6 +307,7 @@ body {
   gap: 20px;
 }
 
+/* ESTILOS BASE DE TARJETA - SIN COLORES FIJOS */
 .card {
   color: white;
   position: relative;
@@ -318,20 +319,6 @@ body {
   border-radius: 2.25rem;
   overflow: hidden;
   padding: 0;
-}
-
-.card::before {
-  position: absolute;
-  content: "";
-  top: 0;
-  width: 100%;
-  height: 100%;
-  border-radius: 2.25rem;
-  z-index: -1;
-  border: 0.155rem solid transparent;
-  -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
-  -webkit-mask-composite: destination-out;
-  mask-composite: exclude;
 }
 
 .card-header {
@@ -396,38 +383,6 @@ body {
 .value {
   font-size: 1.6rem;
   font-weight: bold;
-}
-
-.green {
-  background: radial-gradient(ellipse at right top, #1354b4ed 0%, #8063c7 100%);
-}
-
-.green:before {
-  background: linear-gradient(45deg, #01c3a8, #bceff3, #ffffff, #bceff3, #01c3a8) border-box;
-}
-
-.blue {
-  background: radial-gradient(ellipse at right top, #00458f8f 0%, #3d1eb9 45%, #151419 100%);
-}
-
-.blue:before {
-  background: linear-gradient(45deg, #232228, #232228, #232228, #232228, #1890ff) border-box;
-}
-
-.orange {
-  background: radial-gradient(ellipse at right top, #1297c094 0%, #230972 100%);
-}
-
-.orange:before {
-  background: linear-gradient(45deg, #01c3a8, #bceff3, #ffffff, #bceff3, #01c3a8) border-box;
-}
-
-.red {
-  background: radial-gradient(ellipse at right top, #322aa682 0%, #025164 100%);
-}
-
-.red:before {
-  background: linear-gradient(45deg, #01c3a8, #bceff3, #ffffff, #bceff3, #01c3a8) border-box;
 }
 
 /* Reports Section */
@@ -698,48 +653,7 @@ body {
   grid-column: 1 / -1;
 }
 
-/* ... [TODO TU CÓDIGO CSS ORIGINAL ARRIBA] ... */
-
-/* ============================ */
-/* ESTILOS DEL MODAL (NUEVOS) */
-/* ============================ */
-.modal {
-  display: none; /* Oculto por defecto */
-  position: fixed;
-  top: 0; left: 0; width: 100%; height: 100%;
-  background: rgba(0, 0, 0, 0.8);
-  z-index: 2000;
-  align-items: center; justify-content: center;
-  animation: fadeIn 0.3s ease;
-}
-
-.modal-content {
-  background: var(--clr-dark);
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 16px;
-  padding: 30px;
-  width: 90%; max-width: 500px;
-  box-shadow: 0 10px 40px rgba(0,0,0,0.5);
-  text-align: center;
-  color: white;
-}
-
-.modal-header {
-  display: flex; justify-content: space-between; align-items: center;
-  margin-bottom: 20px; border-bottom: 1px solid rgba(255,255,255,0.1);
-  padding-bottom: 10px;
-}
-
-.modal-title { font-size: 1.4rem; color: white; }
-.close-modal { background: none; border: none; color: white; font-size: 1.8rem; cursor: pointer; }
-.modal-body p { color: #ccc; margin-bottom: 25px; }
-
-@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-
-
-/* --- NUEVOS ESTILOS PARA CO2 Y PREDICCIÓN --- */
-
-/* Botón pequeño "Calcula tu huella" */
+/* Estilos para CO2 y Predicción */
 .btn-xs-link {
   display: inline-block;
   margin-top: 8px;
@@ -759,7 +673,6 @@ body {
   transform: translateY(-2px);
 }
 
-/* Caja de predicción en la tarjeta de costo */
 .prediction-box {
   margin-top: 8px;
   padding-top: 8px;
@@ -775,7 +688,7 @@ body {
 }
 
 .pred-value {
-  color: var(--clr-orange); /* Usa el color naranja del tema */
+  color: var(--clr-orange);
   font-weight: bold;
   font-size: 0.95rem;
 }
