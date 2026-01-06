@@ -1,4 +1,5 @@
 <?php
+date_default_timezone_set('America/Mexico_City');
 $servidor = getenv("MYSQL_ADDON_HOST");
 $usuario  = getenv("MYSQL_ADDON_USER");
 $password = getenv("MYSQL_ADDON_PASSWORD");
@@ -27,3 +28,4 @@ if ($_SERVER["REQUEST_METHOD"] == "POST") {
 }
 $conn->close();
 ?>
+
