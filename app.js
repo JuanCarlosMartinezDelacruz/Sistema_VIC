@@ -1,6 +1,24 @@
 // ==========================================
 // VARIABLES GLOBALES
 // ==========================================
+
+// Mapeo de colores por sensor para mantener consistencia en tarjetas y gráficas
+const sensorPalette = {
+    'SCT013': 'green',
+    'SCT013_Sim': 'blue',
+    'ESP32_Sensor': 'orange',
+    'DEFAULT': 'red'
+};
+
+// Para la gráfica de Dona (Colores Hexagonales)
+const chartColors = {
+    'green': '#01c3a8',
+    'blue': '#1890ff',
+    'orange': '#d88706ff',
+    'red': '#a63d2a',
+    'purple': '#8a2be2'
+};
+
 let allDataGlobal = [];
 let filteredDataGlobal = [];
 let electricityRate = 0.595; // Precio fijo
@@ -65,7 +83,7 @@ async function loadEnergyData() {
 
         // Orden cronológico (Viejo -> Nuevo) para gráficas y cálculos
         allDataGlobal.sort((a, b) => a.dateObj - b.dateObj);
-
+        updateSensorFilter();
         applyFilters();
 
     } catch (e) {
@@ -86,6 +104,11 @@ function applyFilters() {
 
     filteredDataGlobal = allDataGlobal.filter(item => {
         const d = item.dateObj;
+
+                // Filtro de Sensor
+        const matchesSensor = (selectedSensor === 'all' || item.sensor === selectedSensor);
+        if (!matchesSensor) return false;
+
         
         if (range === 'today') {
             return d >= startOfToday;
@@ -120,6 +143,7 @@ function applyFilters() {
 function updateUI() {
     calculateStats();
     updateCharts();
+    updateSensorDistributionChart();
     
     // Invertir orden para la lista de tarjetas (Lo más nuevo ARRIBA)
     const recentFirst = [...filteredDataGlobal].reverse();
@@ -254,43 +278,22 @@ function getWeekKey(date) {
 function renderCards(data) {
     const container = document.getElementById('energy-data-container');
     container.innerHTML = "";
+    const show = data.slice(0, 50);
 
-    const show = data.slice(0, 50); // Límite para rendimiento
-
-    if (show.length === 0) {
-        container.innerHTML = '<p style="padding:20px;">No hay datos.</p>';
-        return;
-    }
-
-    // Colores originales del CSS
-    const colors = ["green", "orange", "red", "blue"];
-
-    show.forEach((item, index) => {
-        const color = colors[index % colors.length];
+    show.forEach((item) => {
+        // Asigna color basado en el nombre del sensor, no en el orden
+        const colorClass = sensorPalette[item.sensor] || 'red'; 
 
         const card = document.createElement('div');
-        card.className = `card ${color}`; // Aplica clase de color original
-        
-        // Estructura HTML original para que coincida con tu CSS
+        card.className = `card ${colorClass}`; 
         card.innerHTML = `
-            <div class="card-header">
-                <div class="date">${item.timestamp}</div>
-            </div>
+            <div class="card-header"><div class="date">${item.timestamp}</div></div>
             <div class="card-body">
                 <h2>${item.sensor}</h2>
                 <div class="card-values">
-                    <div class="value-container">
-                        <div class="value-label">Voltaje</div>
-                        <div class="value">${item.valV}V</div>
-                    </div>
-                    <div class="value-container">
-                        <div class="value-label">Corriente</div>
-                        <div class="value">${item.valI}A</div>
-                    </div>
-                    <div class="value-container">
-                        <div class="value-label">Potencia</div>
-                        <div class="value">${item.valP}W</div>
-                    </div>
+                    <div class="value-container"><div class="value-label">Voltaje</div><div class="value">${item.valV}V</div></div>
+                    <div class="value-container"><div class="value-label">Corriente</div><div class="value">${item.valI}A</div></div>
+                    <div class="value-container"><div class="value-label">Potencia</div><div class="value">${item.valP}W</div></div>
                 </div>
             </div>
         `;
@@ -625,4 +628,49 @@ function setupNavigation() {
             document.getElementById(link.getAttribute('data-page') + '-page').classList.add('active');
         });
     });
+}
+
+// --- NUEVO: Llena el select de sensores dinámicamente ---
+function updateSensorFilter() {
+    const filterSelect = document.getElementById('sensor-filter');
+    const currentSelection = filterSelect.value;
+    
+    // Obtener sensores únicos de los datos
+    const uniqueSensors = [...new Set(allDataGlobal.map(item => item.sensor))];
+    
+    filterSelect.innerHTML = '<option value="all">Todos los sensores</option>';
+    
+    uniqueSensors.forEach(sensor => {
+        const option = document.createElement('option');
+        option.value = sensor;
+        option.textContent = sensor;
+        filterSelect.appendChild(option);
+    });
+
+    // Mantener la selección si aún existe
+    if (uniqueSensors.includes(currentSelection)) {
+        filterSelect.value = currentSelection;
+    }
+}
+
+// --- MODIFICADO: Actualiza la gráfica de dona con datos reales ---
+function updateSensorDistributionChart() {
+    if (!sensorChart) return;
+
+    const counts = {};
+    filteredDataGlobal.forEach(item => {
+        counts[item.sensor] = (counts[item.sensor] || 0) + 1;
+    });
+
+    const labels = Object.keys(counts);
+    const data = Object.values(counts);
+    const backgroundColors = labels.map(name => {
+        const colorName = sensorPalette[name] || 'DEFAULT';
+        return chartColors[colorName] || '#888';
+    });
+
+    sensorChart.data.labels = labels;
+    sensorChart.data.datasets[0].data = data;
+    sensorChart.data.datasets[0].backgroundColor = backgroundColors;
+    sensorChart.update();
 }
