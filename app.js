@@ -1,29 +1,37 @@
 // ==========================================
 // VARIABLES GLOBALES
 // ==========================================
-
-// Mapeo de colores por sensor para mantener consistencia en tarjetas y gráficas
-const sensorPalette = {
-    'SCT013': 'green',
-    'SCT013_Sim': 'blue',
-    'ESP32_Sensor': 'orange',
-    'DEFAULT': 'red'
-};
-
-// Para la gráfica de Dona (Colores Hexagonales)
-const chartColors = {
-    'green': '#01c3a8',
-    'blue': '#1890ff',
-    'orange': '#d88706ff',
-    'red': '#a63d2a',
-    'purple': '#8a2be2'
-};
-
 let allDataGlobal = [];
 let filteredDataGlobal = [];
-let electricityRate = 0.595; // Precio fijo
+let electricityRate = 0.595;
 let powerChart = null;
 let sensorChart = null;
+
+// Sistema de colores dinámicos por sensor
+const sensorColorMap = new Map();
+const availableColors = [
+    { name: 'green', bg: 'radial-gradient(ellipse at right top, #1354b4ed 0%, #8063c7 100%)', border: 'linear-gradient(45deg, #01c3a8, #bceff3, #ffffff, #bceff3, #01c3a8)', chart: '#01c3a8' },
+    { name: 'blue', bg: 'radial-gradient(ellipse at right top, #00458f8f 0%, #3d1eb9 45%, #151419 100%)', border: 'linear-gradient(45deg, #232228, #232228, #232228, #232228, #1890ff)', chart: '#1890ff' },
+    { name: 'orange', bg: 'radial-gradient(ellipse at right top, #1297c094 0%, #230972 100%)', border: 'linear-gradient(45deg, #01c3a8, #bceff3, #ffffff, #bceff3, #01c3a8)', chart: '#ffb741' },
+    { name: 'red', bg: 'radial-gradient(ellipse at right top, #322aa682 0%, #025164 100%)', border: 'linear-gradient(45deg, #01c3a8, #bceff3, #ffffff, #bceff3, #01c3a8)', chart: '#ff6b6b' },
+    { name: 'purple', bg: 'radial-gradient(ellipse at right top, #4a148c 0%, #7b1fa2 100%)', border: 'linear-gradient(45deg, #9c27b0, #ce93d8, #ffffff, #ce93d8, #9c27b0)', chart: '#8a2be2' },
+    { name: 'cyan', bg: 'radial-gradient(ellipse at right top, #006064 0%, #00838f 100%)', border: 'linear-gradient(45deg, #00bcd4, #80deea, #ffffff, #80deea, #00bcd4)', chart: '#00bcd4' },
+    { name: 'pink', bg: 'radial-gradient(ellipse at right top, #880e4f 0%, #c2185b 100%)', border: 'linear-gradient(45deg, #e91e63, #f8bbd0, #ffffff, #f8bbd0, #e91e63)', chart: '#e91e63' },
+    { name: 'lime', bg: 'radial-gradient(ellipse at right top, #33691e 0%, #689f38 100%)', border: 'linear-gradient(45deg, #8bc34a, #dcedc8, #ffffff, #dcedc8, #8bc34a)', chart: '#8bc34a' },
+    { name: 'amber', bg: 'radial-gradient(ellipse at right top, #ff6f00 0%, #ffa726 100%)', border: 'linear-gradient(45deg, #ffc107, #ffecb3, #ffffff, #ffecb3, #ffc107)', chart: '#ffc107' },
+    { name: 'indigo', bg: 'radial-gradient(ellipse at right top, #1a237e 0%, #3949ab 100%)', border: 'linear-gradient(45deg, #3f51b5, #c5cae9, #ffffff, #c5cae9, #3f51b5)', chart: '#3f51b5' }
+];
+
+let colorIndex = 0;
+
+function getSensorColor(sensorName) {
+    if (!sensorColorMap.has(sensorName)) {
+        const color = availableColors[colorIndex % availableColors.length];
+        sensorColorMap.set(sensorName, color);
+        colorIndex++;
+    }
+    return sensorColorMap.get(sensorName);
+}
 
 // ==========================================
 // INICIO
@@ -39,25 +47,12 @@ function initializeApp() {
     setupEventListeners();
     initializeCharts();
     loadEnergyData();
-    
-    // Recargar datos frescos cada 30 segundos
     setInterval(loadEnergyData, 30000);
 }
 
-// ==========================================
-// CORRECCIÓN EN APP.JS
-// ==========================================
-// ==========================================
-// REEMPLAZAR ESTA FUNCIÓN EN APP.JS
-// ==========================================
 function parseDateSystem(dateStr) {
     if (!dateStr) return null;
-
-    // Como data.js ya nos manda el formato "YYYY-MM-DDTHH:mm:ss",
-    // el navegador lo entiende perfectamente sin trucos.
     let d = new Date(dateStr);
-
-    // Validación extra por seguridad
     if (isNaN(d.getTime())) {
         console.error("Fecha inválida recibida:", dateStr);
         return null;
@@ -67,7 +62,7 @@ function parseDateSystem(dateStr) {
 
 async function loadEnergyData() {
     try {
-        const raw = await window.fetchMenuData(); // Llama a data.js (versión fresca)
+        const raw = await window.fetchMenuData();
         if (!raw || raw.length === 0) return;
 
         allDataGlobal = raw.map(item => {
@@ -81,21 +76,16 @@ async function loadEnergyData() {
             };
         }).filter(item => item.dateObj !== null);
 
-        // Orden cronológico (Viejo -> Nuevo) para gráficas y cálculos
         allDataGlobal.sort((a, b) => a.dateObj - b.dateObj);
-        updateSensorFilter();
         applyFilters();
-
     } catch (e) {
         console.error("Error cargando datos:", e);
     }
 }
 
-// ==========================================
-// 2. FILTROS
-// ==========================================
 function applyFilters() {
     const range = document.getElementById('time-range').value;
+    const sensorFilter = document.getElementById('sensor-filter').value;
     const dFrom = document.getElementById('date-from').value;
     const dTo = document.getElementById('date-to').value;
 
@@ -104,12 +94,13 @@ function applyFilters() {
 
     filteredDataGlobal = allDataGlobal.filter(item => {
         const d = item.dateObj;
-
-                // Filtro de Sensor
-        const matchesSensor = (selectedSensor === 'all' || item.sensor === selectedSensor);
-        if (!matchesSensor) return false;
-
         
+        // Filtro por sensor
+        if (sensorFilter !== 'all' && item.sensor !== sensorFilter) {
+            return false;
+        }
+        
+        // Filtro por tiempo
         if (range === 'today') {
             return d >= startOfToday;
         } else if (range === 'yesterday') {
@@ -134,44 +125,52 @@ function applyFilters() {
         return true;
     });
 
+    updateSensorFilter();
     updateUI();
 }
 
-// ==========================================
-// 3. ACTUALIZACIÓN UI
-// ==========================================
+// Actualizar dinámicamente el filtro de sensores
+function updateSensorFilter() {
+    const sensors = new Set(allDataGlobal.map(d => d.sensor));
+    const filterSelect = document.getElementById('sensor-filter');
+    const currentValue = filterSelect.value;
+    
+    filterSelect.innerHTML = '<option value="all">Todos los sensores</option>';
+    sensors.forEach(sensor => {
+        const option = document.createElement('option');
+        option.value = sensor;
+        option.textContent = sensor;
+        filterSelect.appendChild(option);
+    });
+    
+    if (Array.from(sensors).includes(currentValue)) {
+        filterSelect.value = currentValue;
+    }
+}
+
 function updateUI() {
     calculateStats();
     updateCharts();
-    updateSensorDistributionChart();
-    
-    // Invertir orden para la lista de tarjetas (Lo más nuevo ARRIBA)
     const recentFirst = [...filteredDataGlobal].reverse();
     renderCards(recentFirst);
 }
 
-// ==========================================
-// MODIFICACIÓN EN calculateStats
-// ==========================================
 function calculateStats() {
     if (filteredDataGlobal.length === 0) {
         document.getElementById('current-power').textContent = "0 W";
         document.getElementById('total-energy').textContent = "0 kWh";
         document.getElementById('estimated-cost').textContent = "$0.00";
-        document.getElementById('total-co2').textContent = "0 kg"; // Reset CO2
+        document.getElementById('total-co2').textContent = "0 kg";
         return;
     }
 
-    // A. Potencia Actual
     const last = filteredDataGlobal[filteredDataGlobal.length - 1];
     document.getElementById('current-power').textContent = `${last.valP.toFixed(2)} W`;
 
-    // B. Energía Total (Integral)
     let totalKWh = 0;
     for (let i = 1; i < filteredDataGlobal.length; i++) {
         const prev = filteredDataGlobal[i-1];
         const curr = filteredDataGlobal[i];
-
         const msDiff = curr.dateObj - prev.dateObj;
         const hDiff = msDiff / (1000 * 60 * 60);
 
@@ -183,45 +182,30 @@ function calculateStats() {
     }
 
     const cost = totalKWh * electricityRate;
-    
-    // --- NUEVO: CÁLCULO DE CO2 ---
-    // Factor: 1 kWh ≈ 0.45 kg CO2
     const co2Emissions = totalKWh * 0.45;
 
-    // Actualizar DOM
     document.getElementById('total-energy').textContent = `${totalKWh.toFixed(4)} kWh`;
     document.getElementById('estimated-cost').textContent = `$${cost.toFixed(2)}`;
     document.getElementById('total-co2').textContent = `${co2Emissions.toFixed(3)} kg`;
 
-    // Calcular predicción basada en TODOS los datos históricos
-    calculatePrediction(); 
+    calculatePrediction();
 }
 
-// ==========================================
-// NUEVA LÓGICA DE REGRESIÓN LINEAL Y PREDICCIÓN
-// ==========================================
 function calculatePrediction() {
-    // Usamos allDataGlobal para tener el historial completo, no solo lo filtrado
     if (allDataGlobal.length < 10) {
         document.getElementById('cost-prediction').textContent = "Recopilando datos...";
         return;
     }
 
-    // 1. Agrupar costos por semana
-    const weeklyCosts = {}; 
-    
-    // Iteramos para calcular energía por bloques semanales
+    const weeklyCosts = {};
     for (let i = 1; i < allDataGlobal.length; i++) {
         const prev = allDataGlobal[i-1];
         const curr = allDataGlobal[i];
-        
-        // Identificar semana única (Año-Semana)
         const weekKey = getWeekKey(curr.dateObj);
-        
         const msDiff = curr.dateObj - prev.dateObj;
         const hDiff = msDiff / (1000 * 60 * 60);
 
-        if (hDiff > 0 && hDiff < 1) { // Filtro de ruido
+        if (hDiff > 0 && hDiff < 1) {
             const avgW = (prev.valP + curr.valP) / 2;
             const kwh = (avgW / 1000) * hDiff;
             const cost = kwh * electricityRate;
@@ -231,20 +215,16 @@ function calculatePrediction() {
         }
     }
 
-    // Convertir objeto a arrays para regresión (X = índice de semana, Y = costo)
-    const weeks = Object.keys(weeklyCosts).sort(); // Ordenar cronológicamente
+    const weeks = Object.keys(weeklyCosts).sort();
     const yValues = weeks.map(w => weeklyCosts[w]);
-    const xValues = weeks.map((_, i) => i + 1); // 1, 2, 3...
+    const xValues = weeks.map((_, i) => i + 1);
 
-    // Necesitamos al menos 2 puntos (2 semanas distintas) para una línea
     if (xValues.length < 2) {
-        // Si no hay historial suficiente, proyectamos con el promedio actual
         const currentTotal = yValues.reduce((a,b)=>a+b, 0);
         document.getElementById('cost-prediction').textContent = `~ $${currentTotal.toFixed(2)} (Faltan datos)`;
         return;
     }
 
-    // 2. Regresión Lineal: y = mx + b
     const n = xValues.length;
     const sumX = xValues.reduce((a, b) => a + b, 0);
     const sumY = yValues.reduce((a, b) => a + b, 0);
@@ -253,18 +233,13 @@ function calculatePrediction() {
 
     const slope = (n * sumXY - sumX * sumY) / (n * sumXX - sumX * sumX);
     const intercept = (sumY - slope * sumX) / n;
-
-    // 3. Predecir siguiente semana (x = n + 1)
     const nextWeekIndex = n + 1;
     let predictedCost = (slope * nextWeekIndex) + intercept;
 
-    // Evitar valores negativos en la predicción
     if (predictedCost < 0) predictedCost = 0;
-
     document.getElementById('cost-prediction').textContent = `$${predictedCost.toFixed(2)} MXN`;
 }
 
-// Helper: Obtener clave única de semana (ej: "2023-W48")
 function getWeekKey(date) {
     const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()));
     const dayNum = d.getUTCDay() || 7;
@@ -274,26 +249,56 @@ function getWeekKey(date) {
     return `${d.getUTCFullYear()}-W${weekNo}`;
 }
 
-// Renderizado de tarjetas CON EL ESTILO ORIGINAL
 function renderCards(data) {
     const container = document.getElementById('energy-data-container');
     container.innerHTML = "";
+
     const show = data.slice(0, 50);
+    if (show.length === 0) {
+        container.innerHTML = '<p style="padding:20px;">No hay datos.</p>';
+        return;
+    }
 
     show.forEach((item) => {
-        // Asigna color basado en el nombre del sensor, no en el orden
-        const colorClass = sensorPalette[item.sensor] || 'red'; 
-
+        const colorData = getSensorColor(item.sensor);
         const card = document.createElement('div');
-        card.className = `card ${colorClass}`; 
+        card.className = 'card';
+        card.style.background = colorData.bg;
+        
+        // Crear elemento style para el pseudo-elemento ::before
+        const styleId = `sensor-style-${item.sensor.replace(/[^a-zA-Z0-9]/g, '_')}`;
+        if (!document.getElementById(styleId)) {
+            const style = document.createElement('style');
+            style.id = styleId;
+            style.textContent = `
+                .card[data-sensor="${item.sensor}"]::before {
+                    background: ${colorData.border} border-box !important;
+                }
+            `;
+            document.head.appendChild(style);
+        }
+        
+        card.setAttribute('data-sensor', item.sensor);
+        
         card.innerHTML = `
-            <div class="card-header"><div class="date">${item.timestamp}</div></div>
+            <div class="card-header">
+                <div class="date">${item.timestamp}</div>
+            </div>
             <div class="card-body">
                 <h2>${item.sensor}</h2>
                 <div class="card-values">
-                    <div class="value-container"><div class="value-label">Voltaje</div><div class="value">${item.valV}V</div></div>
-                    <div class="value-container"><div class="value-label">Corriente</div><div class="value">${item.valI}A</div></div>
-                    <div class="value-container"><div class="value-label">Potencia</div><div class="value">${item.valP}W</div></div>
+                    <div class="value-container">
+                        <div class="value-label">Voltaje</div>
+                        <div class="value">${item.valV}V</div>
+                    </div>
+                    <div class="value-container">
+                        <div class="value-label">Corriente</div>
+                        <div class="value">${item.valI}A</div>
+                    </div>
+                    <div class="value-container">
+                        <div class="value-label">Potencia</div>
+                        <div class="value">${item.valP}W</div>
+                    </div>
                 </div>
             </div>
         `;
@@ -301,30 +306,22 @@ function renderCards(data) {
     });
 }
 
-// ==========================================
-// 4. GRÁFICAS
-// ==========================================
 function initializeCharts() {
     const ctx1 = document.getElementById('power-chart').getContext('2d');
     powerChart = new Chart(ctx1, {
         type: 'line',
         data: {
-            labels: [],
-            datasets: [{
-                label: 'Potencia (W)',
-                data: [],
-                borderColor: '#01c3a8',
-                backgroundColor: 'rgba(1, 195, 168, 0.1)',
-                borderWidth: 2,
-                fill: true,
-                tension: 0.4,
-                pointRadius: 0
-            }]
+            datasets: []
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            plugins: { legend: { display: false } },
+            plugins: { 
+                legend: { 
+                    display: true,
+                    labels: { color: '#fff' }
+                } 
+            },
             scales: {
                 x: { ticks: { color: '#aaa' }, grid: { color: 'rgba(255,255,255,0.1)' } },
                 y: { ticks: { color: '#aaa' }, grid: { color: 'rgba(255,255,255,0.1)' } }
@@ -336,10 +333,10 @@ function initializeCharts() {
     sensorChart = new Chart(ctx2, {
         type: 'doughnut',
         data: {
-            labels: ['SCT013'],
+            labels: [],
             datasets: [{
-                data: [100],
-                backgroundColor: ['#01c3a8'],
+                data: [],
+                backgroundColor: [],
                 borderWidth: 0
             }]
         },
@@ -356,29 +353,61 @@ function initializeCharts() {
 function updateCharts() {
     if (!powerChart) return;
     
-    // Muestreo para evitar lentitud si hay miles de datos
-    let chartData = filteredDataGlobal;
-    if (chartData.length > 200) {
-        const step = Math.ceil(chartData.length / 200);
-        chartData = chartData.filter((_, i) => i % step === 0);
-    }
-
-    const labels = chartData.map(d => {
-        return `${d.dateObj.getHours()}:${d.dateObj.getMinutes().toString().padStart(2,'0')}`;
+    // Agrupar datos por sensor
+    const sensorGroups = {};
+    filteredDataGlobal.forEach(d => {
+        if (!sensorGroups[d.sensor]) {
+            sensorGroups[d.sensor] = [];
+        }
+        sensorGroups[d.sensor].push(d);
     });
-    const values = chartData.map(d => d.valP);
 
-    powerChart.data.labels = labels;
-    powerChart.data.datasets[0].data = values;
+    // Actualizar gráfica de líneas (multi-sensor)
+    const datasets = Object.keys(sensorGroups).map(sensor => {
+        const colorData = getSensorColor(sensor);
+        let data = sensorGroups[sensor];
+        
+        if (data.length > 200) {
+            const step = Math.ceil(data.length / 200);
+            data = data.filter((_, i) => i % step === 0);
+        }
+
+        return {
+            label: sensor,
+            data: data.map(d => ({
+                x: `${d.dateObj.getHours()}:${d.dateObj.getMinutes().toString().padStart(2,'0')}`,
+                y: d.valP
+            })),
+            borderColor: colorData.chart,
+            backgroundColor: colorData.chart + '20',
+            borderWidth: 2,
+            fill: true,
+            tension: 0.4,
+            pointRadius: 0
+        };
+    });
+
+    powerChart.data.labels = [];
+    powerChart.data.datasets = datasets;
     powerChart.update();
+
+    // Actualizar gráfica de dona (distribución por sensor)
+    const sensorTotals = {};
+    filteredDataGlobal.forEach(d => {
+        if (!sensorTotals[d.sensor]) sensorTotals[d.sensor] = 0;
+        sensorTotals[d.sensor] += d.valP;
+    });
+
+    const sensorLabels = Object.keys(sensorTotals);
+    const sensorValues = Object.values(sensorTotals);
+    const sensorColors = sensorLabels.map(s => getSensorColor(s).chart);
+
+    sensorChart.data.labels = sensorLabels;
+    sensorChart.data.datasets[0].data = sensorValues;
+    sensorChart.data.datasets[0].backgroundColor = sensorColors;
+    sensorChart.update();
 }
 
-// ==========================================
-// 5. PDF PROFESIONAL "SISTEMA VIC"
-// ==========================================
-
-// NOTA: He modificado esta función para que acepte DATOS DIRECTOS (para el botón exportar)
-// Si typeOrData es un Array, lo usa directamente. Si es un string ('today'), filtra como antes.
 function generatePDF(typeOrData, customTitle) {
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF();
@@ -388,13 +417,10 @@ function generatePDF(typeOrData, customTitle) {
     const now = new Date();
     const startOfToday = new Date(now.getFullYear(), now.getMonth(), now.getDate());
 
-    // NUEVO: Si recibimos DATOS (Array) directamente desde el botón Exportar
     if (Array.isArray(typeOrData)) {
         reportData = typeOrData;
         title = customTitle || "Reporte Personalizado";
-    }
-    // ORIGINAL: Si recibimos un string ('today', 'week', etc.)
-    else {
+    } else {
         if (typeOrData === 'today') {
             reportData = allDataGlobal.filter(d => d.dateObj >= startOfToday);
             title = "Reporte Diario";
@@ -419,7 +445,6 @@ function generatePDF(typeOrData, customTitle) {
         return;
     }
 
-    // Calcular totales para el reporte
     let sumKWh = 0;
     let maxP = 0;
     for (let i = 1; i < reportData.length; i++) {
@@ -431,13 +456,10 @@ function generatePDF(typeOrData, customTitle) {
     }
     const totalCost = sumKWh * electricityRate;
 
-    // --- DISEÑO ---
-    // Header Azul
     doc.setFillColor(10, 25, 50); 
     doc.rect(0, 0, 210, 40, 'F');
     
-    // Título
-    doc.setTextColor(1, 195, 168); // Verde
+    doc.setTextColor(1, 195, 168);
     doc.setFontSize(24);
     doc.setFont("helvetica", "bold");
     doc.text("Sistema VIC", 15, 20);
@@ -450,7 +472,6 @@ function generatePDF(typeOrData, customTitle) {
     doc.text(`Fecha: ${now.toLocaleDateString()}`, 160, 20);
     doc.text(`Tarifa: $${electricityRate.toFixed(3)}`, 160, 26);
 
-    // Caja Resumen
     doc.setDrawColor(200);
     doc.setFillColor(245, 245, 245);
     doc.roundedRect(15, 50, 180, 20, 3, 3, 'FD');
@@ -469,18 +490,17 @@ function generatePDF(typeOrData, customTitle) {
     doc.setTextColor(200, 50, 50);
     doc.text(`${maxP.toFixed(2)} W`, 145, 57);
 
-    // Tabla
     let y = 85;
     doc.setFillColor(24, 144, 255);
     doc.rect(15, 78, 180, 8, 'F');
     doc.setTextColor(255);
     doc.setFontSize(9);
     doc.text("FECHA / HORA", 18, 83);
-    doc.text("VOLTAJE", 90, 83);
-    doc.text("CORRIENTE", 120, 83);
-    doc.text("POTENCIA", 150, 83);
+    doc.text("SENSOR", 70, 83);
+    doc.text("VOLTAJE", 100, 83);
+    doc.text("CORRIENTE", 130, 83);
+    doc.text("POTENCIA", 165, 83);
 
-    // Filas (Reciente primero)
     const tableData = [...reportData].reverse();
     doc.setTextColor(0);
     doc.setFont("courier", "normal");
@@ -494,9 +514,10 @@ function generatePDF(typeOrData, customTitle) {
             doc.setTextColor(255);
             doc.setFont("helvetica", "bold");
             doc.text("FECHA / HORA", 18, y-1);
-            doc.text("VOLTAJE", 90, y-1);
-            doc.text("CORRIENTE", 120, y-1);
-            doc.text("POTENCIA", 150, y-1);
+            doc.text("SENSOR", 70, y-1);
+            doc.text("VOLTAJE", 100, y-1);
+            doc.text("CORRIENTE", 130, y-1);
+            doc.text("POTENCIA", 165, y-1);
             y += 5;
             doc.setTextColor(0);
             doc.setFont("courier", "normal");
@@ -508,25 +529,22 @@ function generatePDF(typeOrData, customTitle) {
         }
 
         doc.text(row.timestamp, 18, y);
-        doc.text(row.valV.toString(), 90, y);
-        doc.text(row.valI.toString(), 120, y);
-        doc.text(row.valP.toString(), 150, y);
+        doc.text(row.sensor, 70, y);
+        doc.text(row.valV.toString(), 100, y);
+        doc.text(row.valI.toString(), 130, y);
+        doc.text(row.valP.toString(), 165, y);
         y += 6;
     });
 
     doc.save(`SistemaVIC_${title}.pdf`);
 }
 
-// ==========================================
-// 6. EXPORTAR A EXCEL (NUEVO)
-// ==========================================
 function exportToExcel(data, title) {
     if (!data || data.length === 0) {
         alert("No hay datos para exportar");
         return;
     }
     
-    // Preparar formato limpio
     const cleanData = data.map(i => ({
         "Fecha": i.timestamp,
         "Sensor": i.sensor,
@@ -542,9 +560,6 @@ function exportToExcel(data, title) {
     XLSX.writeFile(wb, `SistemaVIC_${title}.xlsx`);
 }
 
-// ==========================================
-// 7. EVENTOS (MODIFICADO para botones nuevos)
-// ==========================================
 function loadSettings() {
     const s = localStorage.getItem('vicRate');
     if (s) {
@@ -554,30 +569,26 @@ function loadSettings() {
 }
 
 function setupEventListeners() {
-    // BOTÓN ACTUALIZAR: Recarga la página
     document.getElementById('refresh-btn').addEventListener('click', () => {
         location.reload();
     });
 
-    // BOTÓN EXPORTAR: Abre Modal
     const modal = document.getElementById('export-modal');
     document.getElementById('export-btn').addEventListener('click', () => {
         modal.style.display = 'flex';
     });
-    // Cerrar modal
+    
     document.querySelector('.close-modal').addEventListener('click', () => {
         modal.style.display = 'none';
     });
-    // Clic fuera del modal para cerrar
+    
     window.onclick = function(event) {
         if (event.target == modal) {
             modal.style.display = "none";
         }
     }
 
-    // BOTONES DENTRO DEL MODAL (Descarga lo que se ve en pantalla)
     document.getElementById('download-pdf-modal').addEventListener('click', () => {
-        // Le pasamos filteredDataGlobal (lo que el usuario ve ahora mismo con filtros)
         generatePDF(filteredDataGlobal, "Vista_Exportada");
         modal.style.display = 'none';
     });
@@ -587,7 +598,6 @@ function setupEventListeners() {
         modal.style.display = 'none';
     });
 
-    // --- EVENTOS ORIGINALES DE TU CÓDIGO ---
     document.getElementById('apply-filters').addEventListener('click', applyFilters);
     
     document.getElementById('time-range').addEventListener('change', (e) => {
@@ -608,7 +618,6 @@ function setupEventListeners() {
         c.classList.toggle('cards-container');
     });
 
-    // Reportes (Sección Reportes) - Siguen funcionando igual
     document.querySelectorAll('.report-card').forEach(btn => {
         btn.addEventListener('click', () => {
             generatePDF(btn.getAttribute('data-report'));
@@ -628,49 +637,4 @@ function setupNavigation() {
             document.getElementById(link.getAttribute('data-page') + '-page').classList.add('active');
         });
     });
-}
-
-// --- NUEVO: Llena el select de sensores dinámicamente ---
-function updateSensorFilter() {
-    const filterSelect = document.getElementById('sensor-filter');
-    const currentSelection = filterSelect.value;
-    
-    // Obtener sensores únicos de los datos
-    const uniqueSensors = [...new Set(allDataGlobal.map(item => item.sensor))];
-    
-    filterSelect.innerHTML = '<option value="all">Todos los sensores</option>';
-    
-    uniqueSensors.forEach(sensor => {
-        const option = document.createElement('option');
-        option.value = sensor;
-        option.textContent = sensor;
-        filterSelect.appendChild(option);
-    });
-
-    // Mantener la selección si aún existe
-    if (uniqueSensors.includes(currentSelection)) {
-        filterSelect.value = currentSelection;
-    }
-}
-
-// --- MODIFICADO: Actualiza la gráfica de dona con datos reales ---
-function updateSensorDistributionChart() {
-    if (!sensorChart) return;
-
-    const counts = {};
-    filteredDataGlobal.forEach(item => {
-        counts[item.sensor] = (counts[item.sensor] || 0) + 1;
-    });
-
-    const labels = Object.keys(counts);
-    const data = Object.values(counts);
-    const backgroundColors = labels.map(name => {
-        const colorName = sensorPalette[name] || 'DEFAULT';
-        return chartColors[colorName] || '#888';
-    });
-
-    sensorChart.data.labels = labels;
-    sensorChart.data.datasets[0].data = data;
-    sensorChart.data.datasets[0].backgroundColor = backgroundColors;
-    sensorChart.update();
 }
