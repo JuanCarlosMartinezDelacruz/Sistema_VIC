@@ -10,16 +10,66 @@ let sensorChart = null;
 // Sistema de colores dinámicos por sensor
 const sensorColorMap = new Map();
 const availableColors = [
-    { name: 'green', bg: 'radial-gradient(ellipse at right top, #1354b4ed 0%, #8063c7 100%)', border: 'linear-gradient(45deg, #01c3a8, #bceff3, #ffffff, #bceff3, #01c3a8)', chart: '#01c3a8' },
-    { name: 'blue', bg: 'radial-gradient(ellipse at right top, #00458f8f 0%, #3d1eb9 45%, #151419 100%)', border: 'linear-gradient(45deg, #232228, #232228, #232228, #232228, #1890ff)', chart: '#1890ff' },
-    { name: 'orange', bg: 'radial-gradient(ellipse at right top, #1297c094 0%, #230972 100%)', border: 'linear-gradient(45deg, #01c3a8, #bceff3, #ffffff, #bceff3, #01c3a8)', chart: '#ffb741' },
-    { name: 'red', bg: 'radial-gradient(ellipse at right top, #322aa682 0%, #025164 100%)', border: 'linear-gradient(45deg, #01c3a8, #bceff3, #ffffff, #bceff3, #01c3a8)', chart: '#ff6b6b' },
-    { name: 'purple', bg: 'radial-gradient(ellipse at right top, #4a148c 0%, #7b1fa2 100%)', border: 'linear-gradient(45deg, #9c27b0, #ce93d8, #ffffff, #ce93d8, #9c27b0)', chart: '#8a2be2' },
-    { name: 'cyan', bg: 'radial-gradient(ellipse at right top, #006064 0%, #00838f 100%)', border: 'linear-gradient(45deg, #00bcd4, #80deea, #ffffff, #80deea, #00bcd4)', chart: '#00bcd4' },
-    { name: 'pink', bg: 'radial-gradient(ellipse at right top, #880e4f 0%, #c2185b 100%)', border: 'linear-gradient(45deg, #e91e63, #f8bbd0, #ffffff, #f8bbd0, #e91e63)', chart: '#e91e63' },
-    { name: 'lime', bg: 'radial-gradient(ellipse at right top, #33691e 0%, #689f38 100%)', border: 'linear-gradient(45deg, #8bc34a, #dcedc8, #ffffff, #dcedc8, #8bc34a)', chart: '#8bc34a' },
-    { name: 'amber', bg: 'radial-gradient(ellipse at right top, #ff6f00 0%, #ffa726 100%)', border: 'linear-gradient(45deg, #ffc107, #ffecb3, #ffffff, #ffecb3, #ffc107)', chart: '#ffc107' },
-    { name: 'indigo', bg: 'radial-gradient(ellipse at right top, #1a237e 0%, #3949ab 100%)', border: 'linear-gradient(45deg, #3f51b5, #c5cae9, #ffffff, #c5cae9, #3f51b5)', chart: '#3f51b5' }
+    { 
+        bg: 'radial-gradient(ellipse at right top, #1354b4ed 0%, #8063c7 100%)', 
+        borderStart: '#01c3a8',
+        borderMid: '#bceff3',
+        chart: '#01c3a8' 
+    },
+    { 
+        bg: 'radial-gradient(ellipse at right top, #00458f8f 0%, #3d1eb9 45%, #151419 100%)', 
+        borderStart: '#1890ff',
+        borderMid: '#5aa9ff',
+        chart: '#1890ff' 
+    },
+    { 
+        bg: 'radial-gradient(ellipse at right top, #1297c094 0%, #230972 100%)', 
+        borderStart: '#ffb741',
+        borderMid: '#ffd699',
+        chart: '#ffb741' 
+    },
+    { 
+        bg: 'radial-gradient(ellipse at right top, #322aa682 0%, #025164 100%)', 
+        borderStart: '#ff6b6b',
+        borderMid: '#ffb3b3',
+        chart: '#ff6b6b' 
+    },
+    { 
+        bg: 'radial-gradient(ellipse at right top, #4a148c 0%, #7b1fa2 100%)', 
+        borderStart: '#9c27b0',
+        borderMid: '#ce93d8',
+        chart: '#8a2be2' 
+    },
+    { 
+        bg: 'radial-gradient(ellipse at right top, #006064 0%, #00838f 100%)', 
+        borderStart: '#00bcd4',
+        borderMid: '#80deea',
+        chart: '#00bcd4' 
+    },
+    { 
+        bg: 'radial-gradient(ellipse at right top, #880e4f 0%, #c2185b 100%)', 
+        borderStart: '#e91e63',
+        borderMid: '#f8bbd0',
+        chart: '#e91e63' 
+    },
+    { 
+        bg: 'radial-gradient(ellipse at right top, #33691e 0%, #689f38 100%)', 
+        borderStart: '#8bc34a',
+        borderMid: '#dcedc8',
+        chart: '#8bc34a' 
+    },
+    { 
+        bg: 'radial-gradient(ellipse at right top, #ff6f00 0%, #ffa726 100%)', 
+        borderStart: '#ffc107',
+        borderMid: '#ffecb3',
+        chart: '#ffc107' 
+    },
+    { 
+        bg: 'radial-gradient(ellipse at right top, #1a237e 0%, #3949ab 100%)', 
+        borderStart: '#3f51b5',
+        borderMid: '#c5cae9',
+        chart: '#3f51b5' 
+    }
 ];
 
 let colorIndex = 0;
@@ -263,24 +313,43 @@ function renderCards(data) {
         const colorData = getSensorColor(item.sensor);
         const card = document.createElement('div');
         card.className = 'card';
-        card.style.background = colorData.bg;
         
-        // Crear elemento style para el pseudo-elemento ::before
-        const styleId = `sensor-style-${item.sensor.replace(/[^a-zA-Z0-9]/g, '_')}`;
-        if (!document.getElementById(styleId)) {
-            const style = document.createElement('style');
-            style.id = styleId;
-            style.textContent = `
-                .card[data-sensor="${item.sensor}"]::before {
-                    background: ${colorData.border} border-box !important;
-                }
-            `;
-            document.head.appendChild(style);
-        }
+        // Aplicar estilos directamente sin usar clases CSS
+        card.style.cssText = `
+            background: ${colorData.bg};
+            color: white;
+            position: relative;
+            width: 100%;
+            height: 220px;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 0.063em 0.75em 1.563em rgba(7, 143, 197, 0.78);
+            border-radius: 2.25rem;
+            overflow: hidden;
+            padding: 0;
+        `;
         
-        card.setAttribute('data-sensor', item.sensor);
+        // Crear el borde animado con ::before usando un div interno
+        const borderDiv = document.createElement('div');
+        borderDiv.style.cssText = `
+            position: absolute;
+            content: "";
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border-radius: 2.25rem;
+            z-index: -1;
+            border: 0.155rem solid transparent;
+            background: linear-gradient(45deg, ${colorData.borderStart}, ${colorData.borderMid}, #ffffff, ${colorData.borderMid}, ${colorData.borderStart}) border-box;
+            -webkit-mask: linear-gradient(#fff 0 0) padding-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: destination-out;
+            mask-composite: exclude;
+            pointer-events: none;
+        `;
+        card.appendChild(borderDiv);
         
-        card.innerHTML = `
+        card.innerHTML += `
             <div class="card-header">
                 <div class="date">${item.timestamp}</div>
             </div>
@@ -316,6 +385,10 @@ function initializeCharts() {
         options: {
             responsive: true,
             maintainAspectRatio: false,
+            interaction: {
+                mode: 'index',
+                intersect: false
+            },
             plugins: { 
                 legend: { 
                     display: true,
@@ -323,8 +396,20 @@ function initializeCharts() {
                 } 
             },
             scales: {
-                x: { ticks: { color: '#aaa' }, grid: { color: 'rgba(255,255,255,0.1)' } },
-                y: { ticks: { color: '#aaa' }, grid: { color: 'rgba(255,255,255,0.1)' } }
+                x: { 
+                    type: 'category',
+                    ticks: { color: '#aaa' }, 
+                    grid: { color: 'rgba(255,255,255,0.1)' } 
+                },
+                y: { 
+                    ticks: { color: '#aaa' }, 
+                    grid: { color: 'rgba(255,255,255,0.1)' },
+                    title: {
+                        display: true,
+                        text: 'Potencia (W)',
+                        color: '#aaa'
+                    }
+                }
             }
         }
     });
@@ -337,21 +422,42 @@ function initializeCharts() {
             datasets: [{
                 data: [],
                 backgroundColor: [],
-                borderWidth: 0
+                borderWidth: 2,
+                borderColor: '#010525'
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
-                legend: { position: 'bottom', labels: { color: '#fff' } }
+                legend: { 
+                    position: 'bottom', 
+                    labels: { 
+                        color: '#fff',
+                        padding: 15,
+                        font: {
+                            size: 12
+                        }
+                    } 
+                },
+                tooltip: {
+                    callbacks: {
+                        label: function(context) {
+                            const label = context.label || '';
+                            const value = context.parsed || 0;
+                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
+                            const percentage = ((value / total) * 100).toFixed(1);
+                            return `${label}: ${value.toFixed(2)} W (${percentage}%)`;
+                        }
+                    }
+                }
             }
         }
     });
 }
 
 function updateCharts() {
-    if (!powerChart) return;
+    if (!powerChart || filteredDataGlobal.length === 0) return;
     
     // Agrupar datos por sensor
     const sensorGroups = {};
@@ -362,34 +468,46 @@ function updateCharts() {
         sensorGroups[d.sensor].push(d);
     });
 
+    // Crear etiquetas de tiempo únicas para el eje X
+    const allTimes = new Set();
+    filteredDataGlobal.forEach(d => {
+        const timeLabel = `${d.dateObj.getHours().toString().padStart(2,'0')}:${d.dateObj.getMinutes().toString().padStart(2,'0')}`;
+        allTimes.add(timeLabel);
+    });
+    const timeLabels = Array.from(allTimes).sort();
+
     // Actualizar gráfica de líneas (multi-sensor)
     const datasets = Object.keys(sensorGroups).map(sensor => {
         const colorData = getSensorColor(sensor);
         let data = sensorGroups[sensor];
         
+        // Muestreo si hay muchos datos
         if (data.length > 200) {
             const step = Math.ceil(data.length / 200);
             data = data.filter((_, i) => i % step === 0);
         }
 
+        // Crear puntos de datos
+        const points = data.map(d => ({
+            x: `${d.dateObj.getHours().toString().padStart(2,'0')}:${d.dateObj.getMinutes().toString().padStart(2,'0')}`,
+            y: d.valP
+        }));
+
         return {
             label: sensor,
-            data: data.map(d => ({
-                x: `${d.dateObj.getHours()}:${d.dateObj.getMinutes().toString().padStart(2,'0')}`,
-                y: d.valP
-            })),
+            data: points,
             borderColor: colorData.chart,
-            backgroundColor: colorData.chart + '20',
+            backgroundColor: colorData.chart + '30',
             borderWidth: 2,
             fill: true,
             tension: 0.4,
-            pointRadius: 0
+            pointRadius: 1,
+            pointHoverRadius: 5
         };
     });
 
-    powerChart.data.labels = [];
     powerChart.data.datasets = datasets;
-    powerChart.update();
+    powerChart.update('none'); // Sin animación para mejor rendimiento
 
     // Actualizar gráfica de dona (distribución por sensor)
     const sensorTotals = {};
@@ -405,7 +523,7 @@ function updateCharts() {
     sensorChart.data.labels = sensorLabels;
     sensorChart.data.datasets[0].data = sensorValues;
     sensorChart.data.datasets[0].backgroundColor = sensorColors;
-    sensorChart.update();
+    sensorChart.update('none');
 }
 
 function generatePDF(typeOrData, customTitle) {
@@ -635,6 +753,7 @@ function setupNavigation() {
             pages.forEach(p => p.classList.remove('active'));
             link.classList.add('active');
             document.getElementById(link.getAttribute('data-page') + '-page').classList.add('active');
+
         });
     });
 }
