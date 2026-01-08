@@ -126,7 +126,6 @@ function applyFilters() {
     updateUI();
 }
 
-// Actualizar dinámicamente el filtro de sensores
 function updateSensorFilter() {
     const sensors = new Set(allDataGlobal.map(d => d.sensor));
     const filterSelect = document.getElementById('sensor-filter');
@@ -292,65 +291,33 @@ function renderCards(data) {
     console.log(`🎨 Renderizadas ${show.length} tarjetas con colores por sensor`);
 }
 
+// ==========================================
+// GRÁFICAS - LÓGICA DEL CÓDIGO ANTERIOR
+// ==========================================
 function initializeCharts() {
     const ctx1 = document.getElementById('power-chart').getContext('2d');
     powerChart = new Chart(ctx1, {
         type: 'line',
-        data: { datasets: [] },
+        data: {
+            labels: [],
+            datasets: [{
+                label: 'Potencia (W)',
+                data: [],
+                borderColor: '#01c3a8',
+                backgroundColor: 'rgba(1, 195, 168, 0.1)',
+                borderWidth: 2,
+                fill: true,
+                tension: 0.4,
+                pointRadius: 0
+            }]
+        },
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            interaction: { 
-                mode: 'index', 
-                intersect: false 
-            },
-            plugins: { 
-                legend: { 
-                    display: true, 
-                    labels: { 
-                        color: '#fff',
-                        font: { size: 12 }
-                    } 
-                },
-                tooltip: {
-                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                    titleColor: '#fff',
-                    bodyColor: '#fff',
-                    borderColor: '#01c3a8',
-                    borderWidth: 1,
-                    padding: 10,
-                    displayColors: true,
-                    callbacks: {
-                        label: function(context) {
-                            return `${context.dataset.label}: ${context.parsed.y.toFixed(2)} W`;
-                        }
-                    }
-                }
-            },
+            plugins: { legend: { display: false } },
             scales: {
-                x: { 
-                    type: 'category',
-                    ticks: { 
-                        color: '#aaa',
-                        maxRotation: 45,
-                        minRotation: 0
-                    }, 
-                    grid: { color: 'rgba(255,255,255,0.1)' } 
-                },
-                y: { 
-                    ticks: { 
-                        color: '#aaa',
-                        callback: function(value) {
-                            return value.toFixed(0) + ' W';
-                        }
-                    }, 
-                    grid: { color: 'rgba(255,255,255,0.1)' },
-                    title: { 
-                        display: true, 
-                        text: 'Potencia (W)', 
-                        color: '#aaa' 
-                    }
-                }
+                x: { ticks: { color: '#aaa' }, grid: { color: 'rgba(255,255,255,0.1)' } },
+                y: { ticks: { color: '#aaa' }, grid: { color: 'rgba(255,255,255,0.1)' } }
             }
         }
     });
@@ -359,119 +326,43 @@ function initializeCharts() {
     sensorChart = new Chart(ctx2, {
         type: 'doughnut',
         data: {
-            labels: [],
+            labels: ['SCT013'],
             datasets: [{
-                data: [],
-                backgroundColor: [],
-                borderWidth: 3,
-                borderColor: '#010525'
+                data: [100],
+                backgroundColor: ['#01c3a8'],
+                borderWidth: 0
             }]
         },
         options: {
             responsive: true,
             maintainAspectRatio: false,
             plugins: {
-                legend: { 
-                    position: 'bottom', 
-                    labels: { 
-                        color: '#fff', 
-                        padding: 15, 
-                        font: { size: 12 } 
-                    } 
-                },
-                tooltip: {
-                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
-                    titleColor: '#fff',
-                    bodyColor: '#fff',
-                    borderColor: '#01c3a8',
-                    borderWidth: 1,
-                    padding: 10,
-                    callbacks: {
-                        label: function(context) {
-                            const label = context.label || '';
-                            const value = context.parsed || 0;
-                            const total = context.dataset.data.reduce((a, b) => a + b, 0);
-                            const percentage = ((value / total) * 100).toFixed(1);
-                            return `${label}: ${value.toFixed(2)} W (${percentage}%)`;
-                        }
-                    }
-                }
+                legend: { position: 'bottom', labels: { color: '#fff' } }
             }
         }
     });
 }
 
 function updateCharts() {
-    if (!powerChart || filteredDataGlobal.length === 0) return;
+    if (!powerChart) return;
     
-    console.log("📊 Actualizando gráficas...");
+    // Gráfica de líneas - Muestreo para performance
+    let chartData = filteredDataGlobal;
+    if (chartData.length > 200) {
+        const step = Math.ceil(chartData.length / 200);
+        chartData = chartData.filter((_, i) => i % step === 0);
+    }
+
+    const labels = chartData.map(d => {
+        return `${d.dateObj.getHours()}:${d.dateObj.getMinutes().toString().padStart(2,'0')}`;
+    });
+    const values = chartData.map(d => d.valP);
+
+    powerChart.data.labels = labels;
+    powerChart.data.datasets[0].data = values;
+    powerChart.update();
     
-    // Agrupar datos por sensor
-    const sensorGroups = {};
-    filteredDataGlobal.forEach(d => {
-        if (!sensorGroups[d.sensor]) {
-            sensorGroups[d.sensor] = [];
-        }
-        sensorGroups[d.sensor].push(d);
-    });
-
-    console.log("📊 Grupos de sensores:", Object.keys(sensorGroups));
-
-    // Actualizar gráfica de líneas
-    const datasets = Object.keys(sensorGroups).map(sensor => {
-        const color = getSensorColor(sensor);
-        let data = sensorGroups[sensor];
-        
-        // Decidir tamaño de puntos y muestreo según cantidad de datos
-        let pointRadius = 3;
-        let pointHoverRadius = 6;
-        
-        if (data.length > 100) {
-            pointRadius = 2;
-            pointHoverRadius = 5;
-        }
-        
-        if (data.length > 500) {
-            // Solo muestrear si hay MUCHOS datos
-            const step = Math.ceil(data.length / 300);
-            data = data.filter((_, i) => i % step === 0);
-            pointRadius = 1.5;
-        }
-
-        // Crear puntos con timestamp completo
-        const points = data.map(d => {
-            const hours = d.dateObj.getHours().toString().padStart(2, '0');
-            const minutes = d.dateObj.getMinutes().toString().padStart(2, '0');
-            const seconds = d.dateObj.getSeconds().toString().padStart(2, '0');
-            return {
-                x: `${hours}:${minutes}:${seconds}`,
-                y: d.valP
-            };
-        });
-
-        return {
-            label: sensor,
-            data: points,
-            borderColor: color,
-            backgroundColor: color + '30',
-            borderWidth: 2.5,
-            fill: true,
-            tension: 0.3,
-            pointRadius: pointRadius,
-            pointHoverRadius: pointHoverRadius,
-            pointBackgroundColor: color,
-            pointBorderColor: '#fff',
-            pointBorderWidth: 1,
-            pointHoverBackgroundColor: '#fff',
-            pointHoverBorderColor: color,
-            pointHoverBorderWidth: 2
-        };
-    });
-
-    powerChart.data.datasets = datasets;
-    powerChart.update('none');
-
-    // Actualizar gráfica de dona
+    // Gráfica de dona - Agrupación por sensor
     const sensorTotals = {};
     filteredDataGlobal.forEach(d => {
         if (!sensorTotals[d.sensor]) {
@@ -480,8 +371,6 @@ function updateCharts() {
         sensorTotals[d.sensor] += d.valP;
     });
 
-    console.log("🍩 Totales por sensor:", sensorTotals);
-
     const sensorLabels = Object.keys(sensorTotals);
     const sensorValues = Object.values(sensorTotals);
     const sensorColors = sensorLabels.map(s => getSensorColor(s));
@@ -489,9 +378,7 @@ function updateCharts() {
     sensorChart.data.labels = sensorLabels;
     sensorChart.data.datasets[0].data = sensorValues;
     sensorChart.data.datasets[0].backgroundColor = sensorColors;
-    sensorChart.update('none');
-    
-    console.log("✅ Gráficas actualizadas");
+    sensorChart.update();
 }
 
 function generatePDF(typeOrData, customTitle) {
