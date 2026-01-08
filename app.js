@@ -300,20 +300,56 @@ function initializeCharts() {
         options: {
             responsive: true,
             maintainAspectRatio: false,
-            interaction: { mode: 'index', intersect: false },
+            interaction: { 
+                mode: 'index', 
+                intersect: false 
+            },
             plugins: { 
-                legend: { display: true, labels: { color: '#fff' } } 
+                legend: { 
+                    display: true, 
+                    labels: { 
+                        color: '#fff',
+                        font: { size: 12 }
+                    } 
+                },
+                tooltip: {
+                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    titleColor: '#fff',
+                    bodyColor: '#fff',
+                    borderColor: '#01c3a8',
+                    borderWidth: 1,
+                    padding: 10,
+                    displayColors: true,
+                    callbacks: {
+                        label: function(context) {
+                            return `${context.dataset.label}: ${context.parsed.y.toFixed(2)} W`;
+                        }
+                    }
+                }
             },
             scales: {
                 x: { 
                     type: 'category',
-                    ticks: { color: '#aaa' }, 
+                    ticks: { 
+                        color: '#aaa',
+                        maxRotation: 45,
+                        minRotation: 0
+                    }, 
                     grid: { color: 'rgba(255,255,255,0.1)' } 
                 },
                 y: { 
-                    ticks: { color: '#aaa' }, 
+                    ticks: { 
+                        color: '#aaa',
+                        callback: function(value) {
+                            return value.toFixed(0) + ' W';
+                        }
+                    }, 
                     grid: { color: 'rgba(255,255,255,0.1)' },
-                    title: { display: true, text: 'Potencia (W)', color: '#aaa' }
+                    title: { 
+                        display: true, 
+                        text: 'Potencia (W)', 
+                        color: '#aaa' 
+                    }
                 }
             }
         }
@@ -327,7 +363,7 @@ function initializeCharts() {
             datasets: [{
                 data: [],
                 backgroundColor: [],
-                borderWidth: 2,
+                borderWidth: 3,
                 borderColor: '#010525'
             }]
         },
@@ -337,9 +373,19 @@ function initializeCharts() {
             plugins: {
                 legend: { 
                     position: 'bottom', 
-                    labels: { color: '#fff', padding: 15, font: { size: 12 } } 
+                    labels: { 
+                        color: '#fff', 
+                        padding: 15, 
+                        font: { size: 12 } 
+                    } 
                 },
                 tooltip: {
+                    backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                    titleColor: '#fff',
+                    bodyColor: '#fff',
+                    borderColor: '#01c3a8',
+                    borderWidth: 1,
+                    padding: 10,
                     callbacks: {
                         label: function(context) {
                             const label = context.label || '';
@@ -376,33 +422,56 @@ function updateCharts() {
         const color = getSensorColor(sensor);
         let data = sensorGroups[sensor];
         
-        if (data.length > 200) {
-            const step = Math.ceil(data.length / 200);
+        // Decidir tamaño de puntos y muestreo según cantidad de datos
+        let pointRadius = 3;
+        let pointHoverRadius = 6;
+        
+        if (data.length > 100) {
+            pointRadius = 2;
+            pointHoverRadius = 5;
+        }
+        
+        if (data.length > 500) {
+            // Solo muestrear si hay MUCHOS datos
+            const step = Math.ceil(data.length / 300);
             data = data.filter((_, i) => i % step === 0);
+            pointRadius = 1.5;
         }
 
-        const points = data.map(d => ({
-            x: `${d.dateObj.getHours().toString().padStart(2,'0')}:${d.dateObj.getMinutes().toString().padStart(2,'0')}`,
-            y: d.valP
-        }));
+        // Crear puntos con timestamp completo
+        const points = data.map(d => {
+            const hours = d.dateObj.getHours().toString().padStart(2, '0');
+            const minutes = d.dateObj.getMinutes().toString().padStart(2, '0');
+            const seconds = d.dateObj.getSeconds().toString().padStart(2, '0');
+            return {
+                x: `${hours}:${minutes}:${seconds}`,
+                y: d.valP
+            };
+        });
 
         return {
             label: sensor,
             data: points,
             borderColor: color,
             backgroundColor: color + '30',
-            borderWidth: 2,
+            borderWidth: 2.5,
             fill: true,
-            tension: 0.4,
-            pointRadius: 1,
-            pointHoverRadius: 5
+            tension: 0.3,
+            pointRadius: pointRadius,
+            pointHoverRadius: pointHoverRadius,
+            pointBackgroundColor: color,
+            pointBorderColor: '#fff',
+            pointBorderWidth: 1,
+            pointHoverBackgroundColor: '#fff',
+            pointHoverBorderColor: color,
+            pointHoverBorderWidth: 2
         };
     });
 
     powerChart.data.datasets = datasets;
     powerChart.update('none');
 
-    // Actualizar gráfica de dona - SUMA TOTAL POR SENSOR
+    // Actualizar gráfica de dona
     const sensorTotals = {};
     filteredDataGlobal.forEach(d => {
         if (!sensorTotals[d.sensor]) {
